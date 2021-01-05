@@ -20,6 +20,17 @@ config = Config(**global_config.dict())
 
 aqua = on_command("aqua", priority=5)
 
+'''
+// osskey.py
+
+class Au:
+    access_key_id="<'your_access_key_id'>"
+    access_key_secret="<'your_access_key_secret'>"
+    endpoint="<'your_oss_endpoint'>"
+    admin_qq="<'admin_qq'>" # who can delete pics
+    bucket_name="<'your_bucket_name'>"
+
+'''
 
 @aqua.handle()
 async def handle_first_receive(bot: Bot, event: Event, state: dict):
@@ -29,67 +40,71 @@ async def handle_first_receive(bot: Bot, event: Event, state: dict):
 
 
 class oss:
-    endpoint = "https://oss-cn-hangzhou.aliyuncs.com/"
-    auth = oss2.Auth(Au.id,
-                     Au.key)
-    bucket = oss2.Bucket(auth, endpoint, "bakaimg", connect_timeout=15)
+    endpoint = Au.endpoint
+    auth = oss2.Auth(Au.access_key_id,
+                     Au.access_key_secret)
+    bucket = oss2.Bucket(auth, endpoint, Au.bucket_name, connect_timeout=15)
 
-@aqua.got("aqua", prompt="哪个夸图")
+
+@aqua.got("aqua", prompt="send '/aqua help' for more information")
 async def handle_aqua(bot: Bot, event: Event, state: dict):
     aqua = state["aqua"]
 
-    endpoint = "https://oss-cn-hangzhou.aliyuncs.com/"
-    auth = oss2.Auth(Au.id,
-                     Au.key)
-    bucket = oss2.Bucket(auth, endpoint, "bakaimg", connect_timeout=15)
+    re_rule = re.compile("/aqua ([\w]{4,6})(\s\[CQ:([a-z]*),file=(.*)\]){0,1}")
 
-    re_rule = re.compile(
-        "/aqua ([\w]{4,6})(\s\[CQ:([a-z]*),file=(.*)\]){0,1}")
+    res = re.match(re_rule, str(event.raw_message))
 
-    line = str(event.raw_message)
-    res = re.match(re_rule, line)
-    dd = event.sender['user_id']
-    msg = {
-        "type": "text",
-        "data": {
-            "text": type(dd)
+
+    async def switch(option,event,bot):
+        optdict={
+            "random":lambda: randomAqua(event,bot),
+            "upload":lambda: uploadAqua(event,bot),
+            "help":lambda: helpAqua(event,bot),
+            'stats':lambda: statsAqua(event,bot),
         }
-    }
+        return await optdict[option]()
+
+    await switch(str(res[1]),event,bot)
 
 
 
+    '''
     if res != None:
         if res[1] == 'random':
-            msg=await randomAqua()
+            msg = await randomAqua()
             await bot.send(event=event, message=msg)
             await bot.finish()
 
         elif res[1] == 'upload':
-            msg=await uploadAqua(event,bot)
+            msg = await uploadAqua(event, bot)
             await bot.send(event=event, message=msg)
-        elif res[1]== 'help':
-            msg=await helpAqua()
-            await bot.send(event=event,message=msg)
+        elif res[1] == 'help':
+            msg = await helpAqua()
+            await bot.send(event=event, message=msg)
         elif res[1] == 'stats':
-            msg=await statsAqua()
-            await bot.send(event=event,message=msg)
+            msg = await statsAqua()
+            await bot.send(event=event, message=msg)
+    '''
 
-async def randomAqua():
-        aqua_img_url = []
-        # 从list中随机取一个，跳过第一个为路径
-        for item in oss2.ObjectIteratorV2(oss.bucket, prefix='img/aqua'):
-            aqua_img_url.append(
-                "https://bakaimg.oss-cn-hangzhou.aliyuncs.com/"+str(item.key))
-        img_path = aqua_img_url[random.randint(1, len(aqua_img_url))]
-        _msg = {
-            "type": "image",
-            "data": {
-                "file": img_path
-            }
+async def randomAqua(event,bot):
+    aqua_picture_url = []
+    # 从list中随机取一个，跳过第一个为路径
+    for obj in oss2.ObjectIteratorV2(oss.bucket, prefix='img/aqua'):
+        aqua_picture_url.append(
+            "https://bakaimg.oss-cn-hangzhou.aliyuncs.com/"+str(obj.key))
+    img_path = aqua_picture_url[random.randint(1, len(aqua_picture_url))]
+    _msg = {
+        "type": "image",
+        "data": {
+            "file": img_path
         }
-        return _msg
+    }
 
-async def uploadAqua(event:Event,bot:Bot):
+    await bot.send(event=event,message=_msg)
+    return _msg
+
+
+async def uploadAqua(event,bot):
     msg_group = str(event.message).split(",")
     if msg_group[0] in ['upload [CQ:image', 'upload\n [CQ:image']:
         url = msg_group[2][4:-1]
@@ -110,35 +125,44 @@ async def uploadAqua(event:Event,bot:Bot):
             }
         }
         return _msg
-    
 
 
-async def helpAqua():
-    _text='''Aquaaaa Bot! \n\
+async def deleteAqua(event,bot):
+
+    return 0
+
+
+async def helpAqua(event,bot):
+    _text = '''Aquaaaa Bot! \n\
     /aqua random :Give you a random Aqua picture\n\
     /aqua upload [image] :Upload an Aqua picture to server\n\
     /aqua delete [image_name] :Delete a pic (need admin) \n\
     /aqua stats :Aqua picture statistics \n\
     /aqua help :Did you mean '/aqua help' ?
     '''
-    _msg={
-        "type":"text",
-        "data":{
-            "text":_text
+    _msg = {
+        "type": "text",
+        "data": {
+            "text": _text
         }
     }
+
+    await bot.send(event=event, message=_msg)
     return _msg
 
-async def statsAqua():
-    img_cnt=0
-    for items in oss2.ObjectIteratorV2(oss.bucket, prefix='img/aqua'):
-        img_cnt+=1
-    __text="Now we have {_count} Aqua pictures !".format(_count=img_cnt-1)
-    _msg={
-        "type":"text",
-        "data":{
-            "text":__text
+
+async def statsAqua(event,bot):
+    picture_count = 0
+    for _ in oss2.ObjectIteratorV2(oss.bucket, prefix='img/aqua'):
+        picture_count += 1
+
+    __text = "Now we have {_count} Aqua pictures !".format(
+        _count=picture_count)
+    _msg = {
+        "type": "text",
+        "data": {
+            "text": __text
         }
     }
-    return _msg
-
+    await bot.send(event=event, message=_msg)
+    
