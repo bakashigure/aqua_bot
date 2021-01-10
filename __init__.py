@@ -9,7 +9,8 @@ import re
 from .osskey import Au
 import urllib.request
 import string
-
+import pixivpy3 as pixiv
+import operator
 
 import oss2
 from aliyunsdkcore import client
@@ -63,7 +64,9 @@ async def handle_aqua(bot: Bot, event: Event, state: dict):
             "upload": lambda: uploadAqua(event, bot),
             "help": lambda: helpAqua(event, bot),
             "delete": lambda: deleteAqua(event, bot),
-            'stats': lambda: statsAqua(event, bot),
+            "stats": lambda: statsAqua(event, bot),
+            "pixiv":lambda: pixivAqua(event, bot),
+            "test":lambda: testAqua(event, bot)
         }
         return await optdict[option]()
 
@@ -85,6 +88,77 @@ async def randomAqua(event: Event, bot: Bot) -> None:
     }
 
     await bot.send(event=event, message=_msg)
+
+async def pixivAqua(event: Event, bot: Bot)->None:
+    msg_group = str(event.message).split(" ")
+    _duration='within_last_week'
+    try:
+        if msg_group[1] =='week':
+            _duration = 'within_last_week'
+        elif msg_group[1] == 'day':
+            _duration = 'within_last_day'
+        elif msg_group[1] == 'month':
+            _duration = 'within_last_month'
+        else :
+            _duration = 'within_last_week'
+    except:
+        pass
+    api = pixiv.ByPassSniApi()  # Same as AppPixivAPI, but bypass the GFW
+    api.require_appapi_hosts(hostname="public-api.secure.pixiv.net")
+    # api.set_additional_headers({'Accept-Language':'en-US'})
+    api.set_accept_language('en-us')
+    api.login(Au.pixiv_account,Au.pixiv_password)
+    res_json=api.search_illust('湊あくあ',search_target='partial_match_for_tags',sort='date_asc',duration=_duration)
+
+    inf_list=[]
+
+    for illust in res_json.illusts:
+        _dic={'title':illust.title,'id':illust.id,'bookmark':int(illust.total_bookmarks),'large_url':illust.image_urls['large']}
+        inf_list.append(_dic)
+    sorted_x=sorted(inf_list,key=operator.itemgetter('bookmark'))
+    sorted_x=sorted_x[::-1]
+    print(sorted_x[0]['id'])
+    pic_local_path='D:\\a_pixiv'
+    _name='pixiv_'+str(sorted_x[0]['id'])+'.jpg'
+    #api.download(path=pic_local_path,url=sorted_x[0]['large_url'],name=_name)
+
+    opener=urllib.request.build_opener()
+    opener.addheaders=[('Referer','https://www.pixiv.net/')]
+    urllib.request.install_opener(opener)
+    pic_local_path='D:/a_pixiv'
+
+    fullname='D:\\a_pixiv\\'+_name
+    urllib.request.urlretrieve(sorted_x[0]['large_url'], fullname)
+
+
+
+
+    picture_id='pixiv/'+_name
+    oss.bucket.put_object_from_file(picture_id, fullname)
+    _path="file:///"+pic_local_path+'\pixiv_'+str(sorted_x[0]['id'])+'.jpg'
+    if oss.bucket.object_exists(picture_id):
+        pass
+    else:
+        oss.bucket.put_object_from_file(key=picture_id, filename=fullname)        
+    _url=Au.bucket_endpoint+'pixiv/'+_name+"?x-oss-process=image/auto-orient,1/quality,q_90/format,jpg"
+    _msg = [
+        {
+        "type": "image",
+        "data": {
+            "file": _url
+        }
+    },
+    {
+        "type": "text",
+        "data":{
+            "text": "https://www.pixiv.net/artworks/"+str(sorted_x[0]['id'])  
+        }
+    } 
+    ]
+
+    await bot.send(event=event, message=_msg)
+    
+
 
 
 async def deleteAqua(event: Event, bot: Bot) -> None:
@@ -135,8 +209,7 @@ async def uploadAqua(event: Event, bot: Bot) -> None:
             string.ascii_lowercase+string.digits, k=6))+'.jpg'
 
         # store a copy on your local computer as well
-        pic_local_path = 'D:/aqua/' + \
-            str(event.sender['user_id'])+'_'+random_name
+        pic_local_path = 'D:/aqua/' + random_name
 
         # use urllib.request to download the picture uploaded by user
         urllib.request.urlretrieve(url, pic_local_path)
@@ -153,6 +226,17 @@ async def uploadAqua(event: Event, bot: Bot) -> None:
             }
         }
         await bot.send(event=event, message=_msg)
+
+async def testAqua(event: Event, bot: Bot) -> None:
+    _path=r'D:\a_pixiv\pixiv_86800570.jpg'
+    _msg = {
+        "type": "image",
+        "data": {
+            "file": "file:///D:\\1084598601_2gopjl.jpg"
+        }
+    }
+
+    await bot.send(event=event, message=_msg)
 
 
 async def helpAqua(event: Event, bot: Bot) -> None:
