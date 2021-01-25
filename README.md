@@ -8,7 +8,8 @@ aqua_bot 凑·阿库娅bot
 Installation
 =========================
 [nonebot](https://v2.nonebot.dev/)  
-[go-cqhttp](https://github.com/Mrs4s/go-cqhttp)
+[go-cqhttp](https://github.com/Mrs4s/go-cqhttp)  
+除此之外，您可能还需要阿里OSS, 以及一个梯子
 
 Usage
 =========================

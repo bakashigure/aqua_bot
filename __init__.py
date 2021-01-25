@@ -8,13 +8,12 @@ import random
 import re
 from .osskey import Au
 import urllib.request
-import string
 import pixivpy3 as pixiv
 import operator
-import time
-
+import time 
 import oss2
 from aliyunsdkcore import client
+from collections import defaultdict
 
 global_config = get_driver().config
 config = Config(**global_config.dict())
@@ -65,7 +64,7 @@ async def handle_aqua(bot: Bot, event: Event, state: dict):
     re_rule = re.compile("/aqua ([\w]{4,6})(\s\[CQ:([a-z]*),file=(.*)\]){0,1}")
     result = re.match(re_rule, str(event.raw_message))
 
-    # switch in python!
+    
     async def switch(option, event, bot):
         optdict = {
             "random": lambda: randomAqua(event, bot),
@@ -82,7 +81,7 @@ async def handle_aqua(bot: Bot, event: Event, state: dict):
 
 async def randomAqua(event: Event, bot: Bot) -> None:
     # aqua pic list
-    if not AquaPicture.shuffle or time.time()-44.5*60 > AquaPicture.last_shuffle_time:
+    if (not AquaPicture.shuffle ) or (time.time()-44.5*60 > AquaPicture.last_shuffle_time):
         AquaPicture.last_shuffle_time = time.time()
         # shuffle aqua pic list
         for obj in oss2.ObjectIteratorV2(oss.bucket, prefix=Au.prefix):
@@ -98,6 +97,16 @@ async def randomAqua(event: Event, bot: Bot) -> None:
     }
     del AquaPicture.shuffle[0]
     await bot.send(event=event, message=_msg)
+
+async def incorrectAqua(event: Event, bot: Bot)-> None:
+    _msg={
+        "type": "text",
+        "data":{
+            "text":"指令不正确, 发送 /aqua help 查看bot指令"
+        }
+    }
+    await bot.send(event=event, message=_msg)
+    
 
 
 async def pixivAqua(event: Event, bot: Bot) -> None:
@@ -116,6 +125,7 @@ async def pixivAqua(event: Event, bot: Bot) -> None:
         api=aapi
     else:
         api=AquaPicture.api
+
 
 
     message_group = str(event.message).split(" ")
@@ -238,16 +248,19 @@ async def uploadAqua(event: Event, bot: Bot) -> None:
     msg_group = str(event.message).split(",")
     if msg_group[0] in ['upload [CQ:image', 'upload\n [CQ:image','upload \n[CQ:image']:
         # skip "url=" and the last character ']'
-        url = msg_group[2][4:-1]
+        #url = msg_group[2][4:-1]
 
         localfile_path="T:/qqbot/cq/"
         file_name=await bot.get_image(file=msg_group[1][5:])
         file_name=str(file_name['file'])
         localfile_path=localfile_path+file_name
         print("filename:",localfile_path)
+
+        _ascii_lowercase='abcdefghijklmnopqrstuvwxyz'
+        _digits='0123456789'
         # use uploader`s qq number and random string to form the name
         random_name = str(event.sender['user_id'])+'_' + "".join(random.choices(
-            string.ascii_lowercase+string.digits, k=6))+localfile_path[-4:]
+            _ascii_lowercase+_digits, k=6))+localfile_path[-4:]
 
         # store a copy on your local computer as well
         # pic_local_path = 'D:/aqua/' + random_name
@@ -313,3 +326,9 @@ async def statsAqua(event: Event, bot: Bot) -> None:
         }
     }
     await bot.send(event=event, message=_msg)
+
+
+async def identifyAqua(event: Event, bot: Bot) -> None:
+    # 
+    return
+
