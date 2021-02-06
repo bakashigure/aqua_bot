@@ -4,5 +4,5 @@ import config
 if __name__ == '__main__':
     nonebot.init(config)
     nonebot.load_builtin_plugins()
-    nonebot.load_plugin("miebot.plugins.aqua")
+    nonebot.load_plugin("plugins.aqua")
     nonebot.run()
