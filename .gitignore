@@ -33,6 +33,7 @@ share/python-wheels/
 MANIFEST
 ali_oss/
 osskey.py
+.vscode
 
 # PyInstaller
 #  Usually these files are written by a python script from a template

@@ -1,8 +1,4 @@
-from pydantic import BaseSettings
+from nonebot.default_config import *
 
-
-class Config(BaseSettings):
-    # Your Config Here
-
-    class Config:
-        extra = "ignore"
+#SUPERUSERS = {}
+COMMAND_START = {'', '/', '!', '／', '！'}
