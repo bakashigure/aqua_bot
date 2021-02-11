@@ -35,6 +35,7 @@ class Auth:
     pixiv_account = Au.pixiv_account
     pixiv_password = Au.pixiv_password
     avail_groups=Au.avail_groups
+    superuser_list=Au.superuser_list
     auth = oss2.Auth(Au.access_key_id, Au.access_key_secret)
     bucket = oss2.Bucket(auth, endpoint, Au.bucket_name, connect_timeout=15)
 
@@ -46,17 +47,26 @@ class AquaPicture:
     api = None
 
 async def checkPermission(session: CommandSession):
-    if session.event.sub_type == 'group':
-        if session.event.sender['group_id'] in Auth.avail_groups:
+    print(session.event.sub_type)
+    print(session.event.message_type)
+    if session.event.message_type == 'group':
+        if session.event['group_id'] in Auth.avail_groups:
             return True
-    elif session.event.sender['user_id'] == Auth.superuser:
+    elif session.event.sender['user_id'] in Auth.superuser_list:
         return True
     return False
+
+rule_1=re.compile(r"\[CQ:reply,id=-\d{6,15}]\[CQ:at,qq=1649153753]")
+@on_command('uploadByReply',patterns=rule_1,only_to_me=False,aliases=("传"))
+async def uploadByReply(session:CommandSession):
+    print(session.event)
+    return
+
 
 @on_command("多来点夸图", only_to_me=False, aliases=("来多点夸图"))
 async def aquaModomodo(session: CommandSession):
     if await checkPermission(session):
-        for _ in (2,random.randint(2, 5)):
+        for _ in range(1,random.randint(2, 4)):
             await randomAqua(session)
 
 @on_command("来点夸图", only_to_me=False, aliases=("来张夸图", "来点夸图", "夸图来"))
@@ -75,11 +85,10 @@ async def aqua(session: CommandSession):
     # aqua = state["aqua"]
 
     # regex rule
-    re_rule = re.compile("/aqua ([\w]{4,6})(\s\[CQ:([a-z]*),file=(.*)\]){0,1}")
+    re_rule = re.compile(r"/aqua ([\w]{4,6})(\s\[CQ:([a-z]*),file=(.*)\]){0,1}")
     result = re.match(re_rule, str(session.event.raw_message))
     if result == None:
-        re_rule = re.compile(
-            "aqua ([\w]{4,6})(\s\[CQ:([a-z]*),file=(.*)\]){0,1}")
+        re_rule = re.compile(r"aqua ([\w]{4,6})(\s\[CQ:([a-z]*),file=(.*)\]){0,1}")
         result = re.match(re_rule, str(session.event.raw_message))
 
     # switch in python!
@@ -124,6 +133,10 @@ async def pixivAqua(session: CommandSession) -> None:
         'proxies': {
             'https': 'http://127.0.0.1:7890',
         }, }
+
+    aapi = pixiv.AppPixivAPI(**_REQUESTS_KWARGS)
+    aapi.set_accept_language('en-us')
+    AquaPicture.api = aapi.login(Au.pixiv_account, Au.pixiv_password)
 
     if (AquaPicture.api == None) or (time.time()-60*60 > AquaPicture.last_login_time):
         aapi = pixiv.AppPixivAPI(**_REQUESTS_KWARGS)
@@ -259,9 +272,9 @@ async def uploadAqua(session) -> None:
     print(session.event.message)
     if msg_group[0] in ['/aqua upload [CQ:image', '/aqua upload\n [CQ:image', 'aqua upload \n[CQ:image', 'aqua upload [CQ:image', 'aqua upload\n [CQ:image', 'aqua upload \n[CQ:image']:
         # skip "url=" and the last character ']'
-        url = msg_group[2][4:-1]
+        _url = msg_group[2][4:-1]
 
-        localfile_path = "E:/bot/cq/"
+        localfile_path = "E:/Code/python/go_cq_http/"
         file_name = await session.bot.get_image(file=msg_group[1][5:])
         file_name = str(file_name['file'])
         localfile_path = localfile_path+file_name
@@ -292,16 +305,16 @@ async def uploadAqua(session) -> None:
 
 async def helpAqua(session) -> None:
 
-    _text = '''Aquaaaa Bot! \n\
+    _text_en = '''Aquaaaa Bot! \n\
     /aqua random :Give you a random Aqua picture\n\
     /aqua upload [image] :Upload an Aqua picture to server\n\
     /aqua delete [image_name] :Delete a pic (need admin) \n\
     /aqua stats :Aqua picture statistics \n\
     /aqua help :Did you mean '/aqua help' ? \n\
-    /aqua pixiv ['day','week','month'] :pixiv aqua session
+    /aqua pixiv ['day','week','month'] [1~10] :pixiv aqua session
     '''
 
-    _text = '''Aquaaaa Bot! \n\
+    _text_ch = '''Aquaaaa Bot! \n\
     /aqua random :随机一张夸图\n\
     /aqua upload [夸图] :上传一张夸图(注意upload和夸图中间的空格)\n\
     /aqua delete [夸图名称] :删除指定的图(需要管理员) \n\
@@ -313,7 +326,7 @@ async def helpAqua(session) -> None:
     _msg = {
         "type": "text",
         "data": {
-            "text": _text
+            "text": _text_ch
         }
     }
 
