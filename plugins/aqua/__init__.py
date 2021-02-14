@@ -38,6 +38,7 @@ class Auth:
     superuser_list=Au.superuser_list
     auth = oss2.Auth(Au.access_key_id, Au.access_key_secret)
     bucket = oss2.Bucket(auth, endpoint, Au.bucket_name, connect_timeout=15)
+    refresh_token=Au.refresh_token
 
 
 class AquaPicture:
@@ -134,19 +135,24 @@ async def pixivAqua(session: CommandSession) -> None:
             'https': 'http://127.0.0.1:7890',
         }, }
 
-    aapi = pixiv.AppPixivAPI(**_REQUESTS_KWARGS)
-    aapi.set_accept_language('en-us')
-    AquaPicture.api = aapi.login(Au.pixiv_account, Au.pixiv_password)
+    #aapi = pixiv.AppPixivAPI(**_REQUESTS_KWARGS)
+    #aapi.set_accept_language('en-us')
+    #AquaPicture.api = aapi.login(Au.pixiv_account, Au.pixiv_password)
 
-    if (AquaPicture.api == None) or (time.time()-60*60 > AquaPicture.last_login_time):
+
+    #api=aapi
+    
+    if (AquaPicture.api == None) or (time.time()-300*60 > AquaPicture.last_login_time):
         aapi = pixiv.AppPixivAPI(**_REQUESTS_KWARGS)
         aapi.set_accept_language('en-us')
-        AquaPicture.api = aapi.login(Au.pixiv_account, Au.pixiv_password)
+        AquaPicture.api=aapi.auth(refresh_token=Auth.refresh_token)
+        #AquaPicture.api = aapi.login(Au.pixiv_account, Au.pixiv_password)
         AquaPicture.last_login_time = time.time()
         AquaPicture.api = aapi
         api = aapi
     else:
         api = AquaPicture.api
+    
 
     print(session.event.message)
     message_group = str(session.event.message).split(" ")
@@ -273,7 +279,7 @@ async def uploadAqua(session) -> None:
     if msg_group[0] in ['/aqua upload [CQ:image', '/aqua upload\n [CQ:image', 'aqua upload \n[CQ:image', 'aqua upload [CQ:image', 'aqua upload\n [CQ:image', 'aqua upload \n[CQ:image']:
         # skip "url=" and the last character ']'
         _url = msg_group[2][4:-1]
-
+        #localfile_path="E:/bot/cq/"
         localfile_path = "E:/Code/python/go_cq_http/"
         file_name = await session.bot.get_image(file=msg_group[1][5:])
         file_name = str(file_name['file'])
