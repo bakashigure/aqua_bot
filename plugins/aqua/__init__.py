@@ -10,6 +10,8 @@ import time
 import oss2
 from aliyunsdkcore import client
 
+
+
 '''
 // osskey.py
 
@@ -39,6 +41,8 @@ class Auth:
     auth = oss2.Auth(Au.access_key_id, Au.access_key_secret)
     bucket = oss2.Bucket(auth, endpoint, Au.bucket_name, connect_timeout=15)
     refresh_token=Au.refresh_token
+    localfile_path="E:/bot/cq/"
+    #localfile_path = "E:/Code/python/go_cq_http/"
 
 
 class AquaPicture:
@@ -57,11 +61,64 @@ async def checkPermission(session: CommandSession):
         return True
     return False
 
-rule_1=re.compile(r"\[CQ:reply,id=-\d{6,15}]\[CQ:at,qq=1649153753]")
-@on_command('uploadByReply',patterns=rule_1,only_to_me=False,aliases=("传"))
-async def uploadByReply(session:CommandSession):
-    print(session.event)
-    return
+rule_1=re.compile(r"\[CQ:reply,id=((\-|\+)?\d+?)]\[CQ:at,qq=1649153753]")
+@on_command('uploadByReply',patterns=rule_1,only_to_me=False)
+async def uploadByReply(session:CommandSession,id=None):
+    if id==None:
+        rule_3=re.compile(r"\[CQ:reply,id=((\-|\+)?\d+?)]\[CQ:at,qq=1649153753] \[CQ:at,qq=1649153753] +(传|upload)")
+        id = re.match(rule_3,str(session.event.message))[1]
+    
+ 
+    #b=await session.bot.get_msg(message_id=int(id))
+    #print(id)
+    to_upload_msg= await session.bot.get_msg(message_id=int(id))
+    pic_id=to_upload_msg['raw_message'][15:-1]
+    file_name=await session.bot.get_image(file=pic_id)
+    #print(b.message_id," ",b.real_id)
+
+    #print(file_name)
+    localfile_path=Auth.localfile_path
+    file_name = str(file_name['file'])
+
+    random_name = pic_id[:6]
+    picture_id = Au.prefix + '/'+random_name
+    if Auth.bucket.object_exists(picture_id):
+        _text= 'fail to upload, picture already exists'
+        _msg = {
+            "type": "text",
+            "data": {
+                "text": _text
+            }
+        }
+        await session.send(_msg)
+        return
+
+
+    localfile_path = localfile_path+file_name
+    print(localfile_path)
+    # use uploader`s qq number and random string to form the name
+    
+    # upload to oss server
+    fullname = Au.prefix + '/' + random_name
+    Auth.bucket.put_object_from_file(fullname, localfile_path)
+    _text = "upload successfully! id:" + random_name
+    print("success!")
+    _msg = {
+        "type": "text",
+        "data": {
+            "text": _text
+        }
+    }
+    await session.send(_msg)
+    
+
+rule_2=re.compile(r"\[CQ:reply,id=((\-|\+)?\d+?)]传")
+@on_command('uploadByReply2',patterns=rule_2,only_to_me=False)
+async def _up(session: CommandSession):
+    res=re.match(rule_2,str(session.event.message))
+    print(res[1])
+
+    return await uploadByReply(session,res[1])
 
 
 @on_command("多来点夸图", only_to_me=False, aliases=("来多点夸图"))
@@ -127,9 +184,7 @@ async def randomAqua(session: CommandSession) -> None:
     del AquaPicture.shuffled_list[0]
     await session.send(_msg)
 
-
-async def pixivAqua(session: CommandSession) -> None:
-    # unfinished
+async def _api():
     _REQUESTS_KWARGS = {
         'proxies': {
             'https': 'http://127.0.0.1:7890',
@@ -138,10 +193,17 @@ async def pixivAqua(session: CommandSession) -> None:
     #aapi = pixiv.AppPixivAPI(**_REQUESTS_KWARGS)
     #aapi.set_accept_language('en-us')
     #AquaPicture.api = aapi.login(Au.pixiv_account, Au.pixiv_password)
+    aapi = pixiv.AppPixivAPI(**_REQUESTS_KWARGS)
+    aapi.set_accept_language('en-us')
+    AquaPicture.api=aapi.auth(refresh_token=Auth.refresh_token)
+    return aapi
 
 
+
+async def pixivAqua(session: CommandSession) -> None:
+    api = await _api()
     #api=aapi
-    
+    '''
     if (AquaPicture.api == None) or (time.time()-300*60 > AquaPicture.last_login_time):
         aapi = pixiv.AppPixivAPI(**_REQUESTS_KWARGS)
         aapi.set_accept_language('en-us')
@@ -152,7 +214,7 @@ async def pixivAqua(session: CommandSession) -> None:
         api = aapi
     else:
         api = AquaPicture.api
-    
+    '''
 
     print(session.event.message)
     message_group = str(session.event.message).split(" ")
@@ -179,7 +241,6 @@ async def pixivAqua(session: CommandSession) -> None:
         '湊あくあ', search_target='exact_match_for_tags', sort='date_asc', duration=_duration)
 
     inf_list = []
-
     for illust in res_json.illusts:
         _dict = {'title': illust.title, 'id': illust.id, 'bookmark': int(
             illust.total_bookmarks), 'large_url': illust.image_urls['large']}
@@ -208,23 +269,24 @@ async def pixivAqua(session: CommandSession) -> None:
         pass
     else:
         urllib.request.urlretrieve(sorted_x[_id]['large_url'], fullname)
+        print(sorted_x[_id]['large_url'])
         Auth.bucket.put_object_from_file(key=picture_id, filename=fullname)
     _url = Au.bucket_endpoint+'pixiv/'+_name + \
         "?x-oss-process=image/auto-orient,1/quality,q_90/format,jpg"
-    _msg = [
-        {
+    _msg = {
             "type": "image",
             "data": {
                 "file": _url
             }
-        },
-        {
+        }
+    await session.send(_msg)
+    _msg={
             "type": "text",
             "data": {
-                "text": "\n{0}  ❤:{1} \n https://www.pixiv.net/artworks/{2}".format(sorted_x[_id]['title'], sorted_x[_id]['bookmark'], str(sorted_x[_id]['id']))
+                "text": "{0}  ❤:{1} \n https://www.pixiv.net/artworks/{2}".format(sorted_x[_id]['title'], sorted_x[_id]['bookmark'], str(sorted_x[_id]['id']))
             }
         }
-    ]
+    
 
     await session.send(_msg)
 
@@ -238,26 +300,26 @@ async def testAqua(session) -> None:
 async def deleteAqua(session) -> None:
     # only admin can delete pictures
     # add '.jpg' suffix
-    if (session.event.sender['user_id'] == Au.superuser):
-        picture_id = Au.prefix + '/' + str(session.event.message).split(' ')[1]
-        picture_id = picture_id if picture_id[-4:] == '.jpg' else (
-            picture_id + '.jpg')
+    #if (session.event.sender['user_id'] == Au.superuser):
+    picture_id = Au.prefix + '/' + str(session.event.message).split(' ')[2]
+    #picture_id = picture_id if picture_id[-4:] == '.jpg' else (picture_id + '.jpg')
 
-        # check if the image exists before deleting it
-        reps = Auth.bucket.delete_object(
-            picture_id).status if Auth.bucket.object_exists(picture_id) else 404
+    # check if the image exists before deleting it
+    reps = Auth.bucket.delete_object(
+        picture_id).status if Auth.bucket.object_exists(picture_id) else 404
 
-        # if delete succesfully, the status code should be 2XX
-        _text = 'Delete successfully' if int(
-            reps)//100 == 2 else 'Fail to delete, status code: '+str(reps)
-        _msg = {
-            "type": "text",
-            "data":
-            {
-                "text": _text
-            }
+    # if delete succesfully, the status code should be 2XX
+    _text = 'Delete successfully' if int(
+        reps)//100 == 2 else 'Fail to delete, status code: '+str(reps)
+    _msg = {
+        "type": "text",
+        "data":
+        {
+            "text": _text
         }
-        await session.send(_msg)
+    }
+    await session.send(_msg)
+'''
     else:
         _text = 'Permission denied, insufficient privileges'
         _msg = {
@@ -269,44 +331,76 @@ async def deleteAqua(session) -> None:
         }
         await session.send(_msg)
 
-
+'''
 async def uploadAqua(session) -> None:
     # event_message: upload [CQ:image,file=4133284d5300faa9axxxxx7c2fd43e17.image,url=http://c2cxxdw.qxxc.cn/offpic_new/xxxxx//xxxxx-3336xxxx68-4133284D530xxxx7157CxxD43E17/0?term=3]
     # so separate message with ',' and check if this message contains a picture
-    msg_group = str(session.event.message).split(" ")
-    msg_group = str(session.event.message).split(",")
     print(session.event.message)
-    if msg_group[0] in ['/aqua upload [CQ:image', '/aqua upload\n [CQ:image', 'aqua upload \n[CQ:image', 'aqua upload [CQ:image', 'aqua upload\n [CQ:image', 'aqua upload \n[CQ:image']:
+    msg_group = str(session.event.message).split(",")
+    print(msg_group)
+    '''
+    aqua upload [CQ:image,file=173861490b9c4e6470797060acc20644.image,url=http://c2cpicdw.qpic.cn/offpic_new/1142580641//1142580641-3944250964-173861490B9C4E6470797060ACC20644/0?term=3]
+    '''
+    if msg_group[0] in ['/aqua upload [CQ:image',
+     '/aqua upload\n [CQ:image',
+      'aqua upload \n[CQ:image',
+       'aqua upload [CQ:image',
+        'aqua upload\n [CQ:image',
+         'aqua upload \n[CQ:image',
+         'aqua upload\n[CQ:image',
+         'aqua upload \r\n[CQ:image',
+         '/aqua upload\r\n [CQ:image']:
         # skip "url=" and the last character ']'
-        _url = msg_group[2][4:-1]
+
         #localfile_path="E:/bot/cq/"
-        localfile_path = "E:/Code/python/go_cq_http/"
+        localfile_path = Auth.localfile_path
         file_name = await session.bot.get_image(file=msg_group[1][5:])
+        #print(file_name)
         file_name = str(file_name['file'])
         localfile_path = localfile_path+file_name
-        print("filename:", localfile_path)
+
         # use uploader`s qq number and random string to form the name
         random_name = str(session.event.sender['user_id'])+'_' + "".join(random.choices(
             string.ascii_lowercase+string.digits, k=6))+localfile_path[-4:]
-
-        # store a copy on your local computer as well
-        # pic_local_path = 'D:/aqua/' + random_name
-
-        # use urllib.request to download the picture uploaded by user
-        # urllib.request.urlretrieve(url, pic_local_path)
-
         # upload to oss server
         fullname = Au.prefix + '/' + random_name
         Auth.bucket.put_object_from_file(fullname, localfile_path)
-
         _text = "upload successfully! id:" + random_name
-        _msg = {
-            "type": "text",
-            "data": {
-                "text": _text
-            }
+        print("success!")
+    else:
+        _id= msg_group[0].split(" ")
+        api=await _api()
+        resp=api.illust_detail(_id[2])
+        print(resp.illust)
+        _dict = {'id': str(resp.illust.id), 'bookmark': resp.illust.total_bookmarks, 'large_url': resp.illust.image_urls.large}
+
+        opener = urllib.request.build_opener()
+        opener.addheaders = [('Referer', 'https://www.pixiv.net/')]
+        urllib.request.install_opener(opener)
+        #pic_local_path = 'D:/a_pixiv'
+
+        fullname = 'E:\\a_pixiv\\'+_dict['id']
+
+        picture_id = Au.prefix + '/'+'pixiv_'+_dict['id']
+
+        # _path = "file:///"+pic_local_path+'\pixiv_'+str(sorted_x[_id]['id'])+'.jpg'
+
+        if Auth.bucket.object_exists(picture_id):
+            _text= 'fail to upload, picture already exists'
+        else:
+            urllib.request.urlretrieve(_dict['large_url'], fullname)
+            Auth.bucket.put_object_from_file(key=picture_id, filename=fullname)
+            _text='upload successfully! id: '+'pixiv_'+_dict['id']
+        # store a copy on your local computer as well
+
+
+    _msg = {
+        "type": "text",
+        "data": {
+            "text": _text
         }
-        await session.send(_msg)
+    }
+    await session.send(_msg)
 
 
 async def helpAqua(session) -> None:
@@ -314,19 +408,20 @@ async def helpAqua(session) -> None:
     _text_en = '''Aquaaaa Bot! \n\
     /aqua random :Give you a random Aqua picture\n\
     /aqua upload [image] :Upload an Aqua picture to server\n\
-    /aqua delete [image_name] :Delete a pic (need admin) \n\
+    /aqua delete [image_name] :Delete a pic  \n\
     /aqua stats :Aqua picture statistics \n\
     /aqua help :Did you mean '/aqua help' ? \n\
     /aqua pixiv ['day','week','month'] [1~10] :pixiv aqua session
     '''
-
     _text_ch = '''Aquaaaa Bot! \n\
-    /aqua random :随机一张夸图\n\
-    /aqua upload [夸图] :上传一张夸图(注意upload和夸图中间的空格)\n\
-    /aqua delete [夸图名称] :删除指定的图(需要管理员) \n\
+    /aqua random :随机一张夸图 \n\
+        或大喊'来张夸图','来点夸图','夸图来' \n\
+    /aqua upload [夸图 | P站pid] :上传一张夸图\n\
+    /aqua delete [夸图id] :删除指定的图 \n\
     /aqua stats :目前的夸图数量 \n\
     /aqua help :您要找的是不是 '/aqua help' ? \n\
     /aqua pixiv ['day','week','month'] [1~10]:爬取指定时间段[日、周、月]中最受欢迎的第[几]张图
+        回复bot一句"传"即可快速上传此张夸图
     '''
 
     _msg = {
@@ -337,7 +432,6 @@ async def helpAqua(session) -> None:
     }
 
     await session.send(_msg)
-
 
 async def statsAqua(session) -> None:
     picture_count = 0

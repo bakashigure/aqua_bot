@@ -14,12 +14,14 @@ Installation
 Usage
 =========================
 ```
-    /aqua random :随机一张夸图
-    /aqua upload [夸图] :上传一张夸图(注意upload和夸图中间的空格)
-    /aqua delete [夸图名称] :删除指定的图(需要管理员) 
+    /aqua random :随机一张夸图 
+        或大喊'来张夸图','来点夸图','夸图来' 
+    /aqua upload [夸图 | P站pid] :上传一张夸图
+    /aqua delete [夸图id] :删除指定的图 
     /aqua stats :目前的夸图数量 
     /aqua help :您要找的是不是 '/aqua help' ? 
     /aqua pixiv ['day','week','month'] [1~10]:爬取指定时间段[日、周、月]中最受欢迎的第[几]张图
+        回复bot一句"传"即可快速上传此张夸图
 ```
 ChangeLog
 =========================
