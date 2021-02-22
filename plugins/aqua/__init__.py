@@ -41,7 +41,8 @@ class Auth:
     auth = oss2.Auth(Au.access_key_id, Au.access_key_secret)
     bucket = oss2.Bucket(auth, endpoint, Au.bucket_name, connect_timeout=15)
     refresh_token=Au.refresh_token
-    localfile_path="E:/bot/cq/"
+    localfile_path='/root/aqua/'
+    #localfile_path="E:/bot/cq/"
     #localfile_path = "E:/Code/python/go_cq_http/"
 
 
@@ -185,15 +186,16 @@ async def randomAqua(session: CommandSession) -> None:
     await session.send(_msg)
 
 async def _api():
+    '''
     _REQUESTS_KWARGS = {
         'proxies': {
             'https': 'http://127.0.0.1:7890',
         }, }
-
+    '''
     #aapi = pixiv.AppPixivAPI(**_REQUESTS_KWARGS)
     #aapi.set_accept_language('en-us')
     #AquaPicture.api = aapi.login(Au.pixiv_account, Au.pixiv_password)
-    aapi = pixiv.AppPixivAPI(**_REQUESTS_KWARGS)
+    aapi = pixiv.AppPixivAPI()
     aapi.set_accept_language('en-us')
     AquaPicture.api=aapi.auth(refresh_token=Auth.refresh_token)
     return aapi
@@ -259,7 +261,8 @@ async def pixivAqua(session: CommandSession) -> None:
     urllib.request.install_opener(opener)
     #pic_local_path = 'D:/a_pixiv'
 
-    fullname = 'E:\\a_pixiv\\'+_name
+    fullname='/root/aqua/img/'
+    #fullname = 'E:\\a_pixiv\\'+_name
 
     picture_id = 'pixiv/'+_name
 
@@ -379,7 +382,9 @@ async def uploadAqua(session) -> None:
         urllib.request.install_opener(opener)
         #pic_local_path = 'D:/a_pixiv'
 
-        fullname = 'E:\\a_pixiv\\'+_dict['id']
+        fullname='/root/aqua/img/'+_dict['id']
+
+        #fullname = 'E:\\a_pixiv\\'+_dict['id']
 
         picture_id = Au.prefix + '/'+'pixiv_'+_dict['id']
 
