@@ -9,6 +9,7 @@ import operator
 import time
 import oss2
 from aliyunsdkcore import client
+from .saucenao import saucenao_search
 
 
 
@@ -159,7 +160,8 @@ async def aqua(session: CommandSession):
             "delete": lambda: deleteAqua(session),
             "stats": lambda: statsAqua(session),
             "pixiv": lambda: pixivAqua(session),
-            "test": lambda: testAqua(session)
+            "test": lambda: testAqua(session),
+            "search": lambda: searchAqua(session)
         }
         return await optdict[option]()
 
@@ -261,7 +263,7 @@ async def pixivAqua(session: CommandSession) -> None:
     urllib.request.install_opener(opener)
     #pic_local_path = 'D:/a_pixiv'
 
-    fullname='/root/aqua/img/'
+    fullname='/root/aqua/img/'+_name
     #fullname = 'E:\\a_pixiv\\'+_name
 
     picture_id = 'pixiv/'+_name
@@ -407,6 +409,31 @@ async def uploadAqua(session) -> None:
     }
     await session.send(_msg)
 
+async def searchAqua(session) -> None:
+    msg_group = str(session.event.message).split(",")
+    '''
+    aqua upload [CQ:image,file=173861490b9c4e6470797060acc20644.image,url=http://c2cpicdw.qpic.cn/offpic_new/1142580641//1142580641-3944250964-173861490B9C4E6470797060ACC20644/0?term=3]
+    '''
+    if msg_group[0] in ['/aqua upload [CQ:image',
+     '/aqua search\n [CQ:image',
+      'aqua search \n[CQ:image',
+       'aqua search [CQ:image',
+        'aqua search\n [CQ:image',
+         'aqua search \n[CQ:image',
+         'aqua search\n[CQ:image',
+         'aqua search \r\n[CQ:image',
+         '/aqua search\r\n [CQ:image']:
+        # skip "url=" and the last character ']'
+
+        #localfile_path="E:/bot/cq/"
+        localfile_path = Auth.localfile_path
+        file_name = await session.bot.get_image(file=msg_group[1][5:])
+        #print(file_name)
+        file_name = str(file_name['file'])
+        localfile_path = localfile_path+file_name
+        res= await saucenao_search(localfile_path)
+        await session.send(res)
+
 
 async def helpAqua(session) -> None:
 
@@ -427,6 +454,7 @@ async def helpAqua(session) -> None:
     /aqua help :您要找的是不是 '/aqua help' ? \n\
     /aqua pixiv ['day','week','month'] [1~10]:爬取指定时间段[日、周、月]中最受欢迎的第[几]张图
         回复bot一句"传"即可快速上传此张夸图
+    /aqua search [夸图] :从pixiv中搜索这张夸图! 未来会支持更多来源.
     '''
 
     _msg = {
