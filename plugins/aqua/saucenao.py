@@ -1,8 +1,13 @@
 # -*- coding:utf-8 -*-
+
+# Modified from https://saucenao.com/tools/examples/api/identify_images_v1.1.py
+# Created by bakashigure
+# Last updated 2021/4/3
+
+
 from .secret import APIKEY
 
 api_key = APIKEY
-EnableRename = False
 minsim = '80!'
 
 import sys
