@@ -51,6 +51,7 @@ class AquaPicture:
     last_shuffle_time = 0
     shuffled_list = []
     api = None
+    
 
 
 async def checkPermission(session: CommandSession):
@@ -196,8 +197,26 @@ async def randomAqua(session: CommandSession) -> None:
     await session.send(_msg)
 
 
+    
 async def _api():
     # since pixiv no longer support account login, use refresh_token instead.
+    if (AquaPicture.last_login_time+7200<time.time()):
+        login_fail_count=0
+        while(login_fail_count < 5):
+            try:
+                api = pixiv.AppPixivAPI()
+                api.set_accept_language('en-us')
+                AquaPicture.api = api.auth(refresh_token=Auth.refresh_token)
+                AquaPicture.last_login_time=time.time()
+                break
+            except Exception:
+                login_fail_count+=1
+                time.sleep(1)
+            if (login_fail_count==5):
+                return "Authentication failed after 5 times, please try again later"
+        return api    
+    else:
+        return AquaPicture.api
     '''
     _REQUESTS_KWARGS = {
         'proxies': {
@@ -207,14 +226,19 @@ async def _api():
     #aapi = pixiv.AppPixivAPI(**_REQUESTS_KWARGS)
     # aapi.set_accept_language('en-us')
     #AquaPicture.api = aapi.login(Au.pixiv_account, Au.pixiv_password)
-    aapi = pixiv.AppPixivAPI()
-    aapi.set_accept_language('en-us')
-    AquaPicture.api = aapi.auth(refresh_token=Auth.refresh_token)
-    return aapi
+
 
 
 async def pixivAqua(session: CommandSession) -> None:
     api = await _api()
+    if type(api) == str:
+        _msg = {
+        "type": "text",
+        "data": {
+                "text": api
+        }
+    }
+        return await session.send(_msg)
     # api=aapi
     '''
     if (AquaPicture.api == None) or (time.time()-300*60 > AquaPicture.last_login_time):
@@ -358,15 +382,8 @@ async def uploadAqua(session) -> None:
     '''
     # WOW, REGEX IS AWESOME!
     rule_upload_check = "/?aqua upload(\\n | \\n| | \\r\\n|\\r\\n |\\n)\[CQ:image"
-    if msg_group[0] in ['/aqua upload [CQ:image',
-                        '/aqua upload\n [CQ:image',
-                        'aqua upload \n[CQ:image',
-                        'aqua upload [CQ:image',
-                        'aqua upload\n [CQ:image',
-                        'aqua upload \n[CQ:image',
-                        'aqua upload\n[CQ:image',
-                        'aqua upload \r\n[CQ:image',
-                        '/aqua upload\r\n [CQ:image']:
+    rule_upload_pixiv_check= "/?aqua upload (\d*)"
+    if result:=re.match(rule_upload_check,msg_group[0]):
         # skip "url=" and the last character ']'
 
         # localfile_path="E:/bot/cq/"
@@ -382,36 +399,35 @@ async def uploadAqua(session) -> None:
         # upload to oss server
         fullname = Au.prefix + '/' + random_name
         Auth.bucket.put_object_from_file(fullname, localfile_path)
+
         _text = "upload successfully! id:" + random_name
         print("success!")
-    else:
-        _id = msg_group[0].split(" ")
+    elif result:=re.match(rule_upload_pixiv_check,msg_group[0]):
+        illust_id = result[1]
         api = await _api()
-        resp = api.illust_detail(_id[2])
-        print(resp.illust)
-        _dict = {'id': str(resp.illust.id), 'bookmark': resp.illust.total_bookmarks,
-                 'large_url': resp.illust.image_urls.large}
-
-        opener = urllib.request.build_opener()
-        opener.addheaders = [('Referer', 'https://www.pixiv.net/')]
-        urllib.request.install_opener(opener)
-        #pic_local_path = 'D:/a_pixiv'
-
-        fullname = '/root/aqua/img/'+_dict['id']
-
-        #fullname = 'E:\\a_pixiv\\'+_dict['id']
-
-        picture_id = Au.prefix + '/'+'pixiv_'+_dict['id']
-
-        # _path = "file:///"+pic_local_path+'\pixiv_'+str(sorted_x[_id]['id'])+'.jpg'
-
-        if Auth.bucket.object_exists(picture_id):
-            _text = 'fail to upload, picture already exists'
+        try:
+            resp = api.illust_detail(illust_id)
+        except Exception as e:
+            _text="fail to upload, error: {}".format(e)
         else:
-            urllib.request.urlretrieve(_dict['large_url'], fullname)
-            Auth.bucket.put_object_from_file(key=picture_id, filename=fullname)
-            _text = 'upload successfully! id: '+'pixiv_'+_dict['id']
-        # store a copy on your local computer as well
+            print(resp.illust)
+            _dict = {'id': str(resp.illust.id), 'bookmark': resp.illust.total_bookmarks,
+                    'large_url': resp.illust.image_urls.large}
+            opener = urllib.request.build_opener()
+            opener.addheaders = [('Referer', 'https://www.pixiv.net/')]
+            urllib.request.install_opener(opener)
+            #pic_local_path = 'D:/a_pixiv'
+            fullname = '/root/aqua/img/'+_dict['id']
+            #fullname = 'E:\\a_pixiv\\'+_dict['id']
+            picture_id = Au.prefix + '/'+'pixiv_'+_dict['id']
+            # _path = "file:///"+pic_local_path+'\pixiv_'+str(sorted_x[_id]['id'])+'.jpg'
+            if Auth.bucket.object_exists(picture_id):
+                _text = 'fail to upload, picture already exists'
+            else:
+                urllib.request.urlretrieve(_dict['large_url'], fullname)
+                Auth.bucket.put_object_from_file(key=picture_id, filename=fullname)
+                _text = 'upload successfully! id: '+'pixiv_'+_dict['id']
+            # store a copy on your local computer as well
 
     _msg = {
         "type": "text",
@@ -427,15 +443,8 @@ async def searchAqua(session) -> None:
     '''
     aqua upload [CQ:image,file=173861490b9c4e6470797060acc20644.image,url=http://c2cpicdw.qpic.cn/offpic_new/1142580641//1142580641-3944250964-173861490B9C4E6470797060ACC20644/0?term=3]
     '''
-    if msg_group[0] in ['/aqua upload [CQ:image',
-                        '/aqua search\n [CQ:image',
-                        'aqua search \n[CQ:image',
-                        'aqua search [CQ:image',
-                        'aqua search\n [CQ:image',
-                        'aqua search \n[CQ:image',
-                        'aqua search\n[CQ:image',
-                        'aqua search \r\n[CQ:image',
-                        '/aqua search\r\n [CQ:image']:
+    rule_search="/?aqua search(\\n | \\n| |\\n| \\r\\n|\\r\\n )\[CQ:image"
+    if re.match(rule_search,msg_group[0]):
         # skip "url=" and the last character ']'
 
         # localfile_path="E:/bot/cq/"
@@ -487,7 +496,7 @@ async def statsAqua(session) -> None:
     for _ in oss2.ObjectIteratorV2(Auth.bucket, prefix=Au.prefix):
         picture_count += 1
 
-    __text = "Now we have {0} Aqua pictures !".format(picture_count)
+    __text = "挖藕! 现在有{0}张夸图!".format(picture_count)
     _msg = {
         "type": "text",
         "data": {
