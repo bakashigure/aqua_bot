@@ -17,9 +17,9 @@ enable_group = 'yes'
 enable_private = 'yes'
 
 
-class Text(default_language):
+def Text(default_language):
     if default_language == 'english':
-    text_help = '''Aquaaaa Bot! \n
+        text_help = '''Aquaaaa Bot! \n
     /aqua random :Give you a random Aqua picture\n
         or just say "来张夸图", "夸图来" , "来点夸图" \n
     /aqua upload [image | pixiv_pid] :Upload an Aqua picture to server\n
