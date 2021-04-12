@@ -206,7 +206,8 @@ async def _api():
             try:
                 api = pixiv.AppPixivAPI()
                 api.set_accept_language('en-us')
-                AquaPicture.api = api.auth(refresh_token=Auth.refresh_token)
+                api.auth(refresh_token=Auth.refresh_token)
+                AquaPicture.api=api
                 AquaPicture.last_login_time=time.time()
                 break
             except Exception:
