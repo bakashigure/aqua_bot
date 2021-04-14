@@ -8,7 +8,6 @@ import pixivpy3 as pixiv
 import operator
 import time
 import oss2
-import pytz
 
 from aliyunsdkcore import client
 from .saucenao import saucenao_search
@@ -405,9 +404,8 @@ async def uploadAqua(session) -> None:
     print(session.event.message)
     msg_group = str(session.event.message).split(",")
     print(msg_group)
-    '''
-    aqua upload [CQ:image,file=173861490b9c4e6470797060acc20644.image,url=http://c2cpicdw.qpic.cn/offpic_new/1142580641//1142580641-3944250964-173861490B9C4E6470797060ACC20644/0?term=3]
-    '''
+
+
     # WOW, REGEX IS AWESOME!
     rule_upload_check = "/?aqua upload(\\n | \\n| | \\r\\n|\\r\\n |\\n)\[CQ:image"
     rule_upload_pixiv_check = "/?aqua upload (\d*)"
