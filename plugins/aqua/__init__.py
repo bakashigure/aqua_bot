@@ -441,7 +441,14 @@ async def uploadAqua(session) -> None:
         for k, v in resp.items():
             if k == 'error':
                 e = v['user_message']
-        _text = "fail to upload, error \"{}\" ".format(e)
+                _text = "fail to upload, error \"{}\" ".format(e)
+                _msg = {
+                        "type": "text",
+                        "data": {
+                            "text": _text
+                        }
+                    }
+                return await session.send(_msg)
 
         print(resp.illust)
         _dict = {'id': str(resp.illust.id), 'bookmark': resp.illust.total_bookmarks,
