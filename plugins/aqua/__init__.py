@@ -10,7 +10,7 @@ import time
 import oss2
 
 from aliyunsdkcore import client
-from .saucenao import saucenao_search
+from .saucenao import Saucenao
 from typing import Optional,Union
 
 
@@ -336,11 +336,19 @@ async def pixivAqua(session: Union[CommandSession,str]) ->None:
         await session.send(_msg)
     else:
         await bot.send_group_msg(group_id=Au.schedule_group,message=_msg)
-        
+    '''    
     _msg = {
         "type": "text",
         "data": {
-                "text": "{0}  ❤:{1} \n https://www.pixiv.net/artworks/{2}".format(sorted_x[_id]['title'], sorted_x[_id]['bookmark'], str(sorted_x[_id]['id']))
+                "text": "{0}  ♡:{1} \nhttps://www.pixiv.net/artworks/{2}".format(sorted_x[_id]['title'], sorted_x[_id]['bookmark'], str(sorted_x[_id]['id']))
+        }
+    }
+    '''
+
+    _msg = {
+        "type": "text",
+        "data": {
+                "text": "{0}\n[♡:{1}/{2}]".format(sorted_x[_id]['title'], sorted_x[_id]['bookmark'], str(sorted_x[_id]['id']))
         }
     }
 
@@ -479,7 +487,7 @@ async def uploadAqua(session) -> None:
 async def searchAqua(session) -> None:
     msg_group = str(session.event.message).split(",")
     '''
-    aqua upload [CQ:image,file=173861490b9c4e6470797060acc20644.image,url=http://c2cpicdw.qpic.cn/offpic_new/1142580641//1142580641-3944250964-173861490B9C4E6470797060ACC20644/0?term=3]
+    aqua upload [CQ:image,file=173861490b9c4e6470797060acc20644.image,url=http://c2cpicdw.qpic.cn/offpic_new/11xxxxx1//114xxxx1-3944xxxx4-173861490B9C4Exxxxxx0644/0?term=3]
     '''
     rule_search = "/?aqua search(\\n | \\n| |\\n| \\r\\n|\\r\\n )\[CQ:image"
     if re.match(rule_search, msg_group[0]):
@@ -491,10 +499,34 @@ async def searchAqua(session) -> None:
         # print(file_name)
         file_name = str(file_name['file'])
         localfile_path = localfile_path+file_name
-        res = await saucenao_search(localfile_path)
-        await session.send(res)
+        saucenao_api=saucenao.Saucenao()
+        res = await saucenao_api.saucenao_search(localfile_path)
 
-
+        a=eval(res)
+        if(a['type']=='success'):
+            _rate=a['rate']
+            _index=a['index']
+            _text="Found! %s\n"%_rate
+            for k,v in a['data'][_index].items():
+                _text+="%s: %s\n"%(k,v)
+            print(_text)
+        elif(a['type']=='warn'):
+            _rate=a['rate']
+            _text="Not Found. %s\n"%_rate
+            _text+=a['message']
+            print(_text)
+        elif(a['type']=='error'):
+            _text="Error\n"+a['message']
+            print(_text)
+        else:
+            _text="Unknown Error Occurred."
+        _msg = {
+            "type": "text",
+            "data": {
+                "text": _text
+            }
+        }
+        await session.send(_msg)
 async def helpAqua(session) -> None:
 
     _text_en = '''Aquaaaa Bot! \n\
@@ -505,7 +537,7 @@ async def helpAqua(session) -> None:
     /aqua help :Did you mean '/aqua help' ? \n\
     /aqua pixiv ['day','week','month'] [1~10] :pixiv aqua session
     '''
-    _text_ch = '''Aquaaaa Bot! v210412 \n\
+    _text_ch = '''Aquaaaa Bot! v210518b \n\
     /aqua random :随机一张夸图 \n\
         或大喊'来张夸图','来点夸图','夸图来' \n\
     /aqua upload [夸图 | P站pid] :上传一张夸图\n\
@@ -514,7 +546,7 @@ async def helpAqua(session) -> None:
     /aqua help :您要找的是不是 '/aqua help' ? \n\
     /aqua pixiv ['day','week','month'] [1~10]:爬取指定时间段[日、周、月]中最受欢迎的第[几]张图
         回复bot一句"传"即可快速上传此张夸图
-    /aqua search [夸图] :从pixiv中搜索这张夸图! 未来会支持更多来源.
+    /aqua search [图] :在saucenao从中搜索这张图, 支持来源pixiv, twitter, seiga, drawr, nijie, da, danbooru...
     '''
 
     _msg = {
