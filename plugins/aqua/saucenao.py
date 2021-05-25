@@ -222,6 +222,17 @@ class Saucenao:
                             creator=(lambda x: ", ".join(x))(creator)
                         jp_name=results['results'][0]['data']['jp_name']
                         found_json['data']['H-Misc']={"source":source,"creator":creator,"jp_name":jp_name}
+                    elif index_id == 12:
+                        # 12 -> Yande.re
+                        # ext_urls, yandere_id, creator, material, characters, source
+                        found_json['index']="yandere"
+                        creator=results['results'][0]['data']['creator']
+                        if type(creator)==list:
+                            creator=(lambda x: ", ".join(x))(creator)
+                        characters=results['results'][0]['data']['characters']
+                        source=results['results'][0]['data']['source']
+                        found_json['data']['yandere']={"creator":creator,"characters":characters,"source":source}
+
                     else:    
                         # unknown
                         print('Unhandled Index! Exiting...')

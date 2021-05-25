@@ -197,7 +197,7 @@ async def randomAqua(session: CommandSession) -> None:
     _msg = {
         "type": "image",
         "data": {
-            "file": AquaPicture.shuffled_list[0]
+            "file": AquaPicture.shuffled_list[0]+"?x-oss-process=image/auto-orient,1/quality,q_100/format,jpg"
         }
     }
     del AquaPicture.shuffled_list[0]
@@ -381,8 +381,8 @@ async def deleteAqua(session) -> None:
         picture_id).status if Auth.bucket.object_exists(picture_id) else 404
 
     # if delete succesfully, the status code should be 2XX
-    _text = 'Delete successfully' if int(
-        reps)//100 == 2 else 'Fail to delete, status code: '+str(reps)
+    _text = 'deleted' if int(
+        reps)//100 == 2 else 'fail to delete\nstatus code: '+str(reps)
     _msg = {
         "type": "text",
         "data":
@@ -434,7 +434,7 @@ async def uploadAqua(session) -> None:
         fullname = Au.prefix + '/' + random_name
         Auth.bucket.put_object_from_file(fullname, localfile_path)
 
-        _text = "upload successfully! id:" + random_name
+        _text = "uploaded \nid: " + random_name
         print("success!")
     elif result := re.match(rule_upload_pixiv_check, msg_group[0]):
         illust_id = result[1]
@@ -468,11 +468,11 @@ async def uploadAqua(session) -> None:
         picture_id = Au.prefix + '/'+'pixiv_'+_dict['id']
         # _path = "file:///"+pic_local_path+'\pixiv_'+str(sorted_x[_id]['id'])+'.jpg'
         if Auth.bucket.object_exists(picture_id):
-            _text = 'fail to upload, error "picture already exists" '
+            _text = 'fail to upload\nerror: picture already exists '
         else:
             urllib.request.urlretrieve(_dict['large_url'], fullname)
             Auth.bucket.put_object_from_file(key=picture_id, filename=fullname)
-            _text = 'upload successfully! id: '+'pixiv_'+_dict['id']
+            _text = 'uploaded \nid: '+'pixiv_'+_dict['id']
         # store a copy on your local computer as well
 
     _msg = {
@@ -506,18 +506,18 @@ async def searchAqua(session) -> None:
         if(a['type']=='success'):
             _rate=a['rate']
             _index=a['index']
-            _text="Found! %s\n"%_rate
+            _text="similarity: %s\n"%_rate
             for k,v in a['data'][_index].items():
                 _text+="%s: %s\n"%(k,v)
-            print(_text)
+            #print(_text)
         elif(a['type']=='warn'):
             _rate=a['rate']
-            _text="Not Found. %s\n"%_rate
+            _text="similarity: %s\n"%_rate
             _text+=a['message']
-            print(_text)
+            #print(_text)
         elif(a['type']=='error'):
-            _text="Error\n"+a['message']
-            print(_text)
+            _text="error\n"+a['message']
+            #print(_text)
         else:
             _text="Unknown Error Occurred."
         _msg = {
@@ -537,7 +537,7 @@ async def helpAqua(session) -> None:
     /aqua help :Did you mean '/aqua help' ? \n\
     /aqua pixiv ['day','week','month'] [1~10] :pixiv aqua session
     '''
-    _text_ch = '''Aquaaaa Bot! v210518b \n\
+    _text_ch = '''Aquaaaa Bot! v210525 \n\
     /aqua random :随机一张夸图 \n\
         或大喊'来张夸图','来点夸图','夸图来' \n\
     /aqua upload [夸图 | P站pid] :上传一张夸图\n\
