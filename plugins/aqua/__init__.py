@@ -1,6 +1,9 @@
-from nonebot import on_command, CommandSession,get_bot,scheduler
+from nonebot import on_command, CommandSession, get_bot, scheduler
 import random
 import re
+from nonebot.notice_request import NoticeSession
+
+from nonebot.plugin import on_notice
 from .osskey import Au
 import urllib.request
 import string
@@ -11,7 +14,7 @@ import oss2
 
 from aliyunsdkcore import client
 from .saucenao import Saucenao
-from typing import Optional,Union
+from typing import Optional, Pattern, Union
 
 
 '''
@@ -43,7 +46,7 @@ class Auth:
     auth = oss2.Auth(Au.access_key_id, Au.access_key_secret)
     bucket = oss2.Bucket(auth, endpoint, Au.bucket_name, connect_timeout=15)
     refresh_token = Au.refresh_token
-    schedule_group=Au.schedule_group
+    schedule_group = Au.schedule_group
     localfile_path = '/root/aqua/'
     # localfile_path="E:/bot/cq/"
     #localfile_path = "E:/Code/python/go_cq_http/"
@@ -68,6 +71,30 @@ async def checkPermission(session: CommandSession):
 
 rule_upload_by_reply = re.compile(
     r"\[CQ:reply,id=((\-|\+)?\d+?)]\[CQ:at,qq=1649153753]")
+
+
+async def _get_aqua_pic() -> str:
+    '''
+    Return a fiexed url.
+    '''
+    _prefix = '?x-oss-process=image/auto-orient,1/quality,q_100/format,jpg'
+    if not AquaPicture.shuffled_list or (time.time()-44.5*600 > AquaPicture.last_shuffle_time):
+        AquaPicture.last_shuffle_time = time.time()
+        # shuffle aqua pic list
+        for obj in oss2.ObjectIteratorV2(Auth.bucket, prefix=Au.prefix):
+            AquaPicture.shuffled_list.append(Au.bucket_endpoint+str(obj.key))
+        del AquaPicture.shuffled_list[0]
+        # delete [0] because it`s path
+        random.shuffle(AquaPicture.shuffled_list)
+
+    if AquaPicture.shuffled_list[0][-3:] == "gif":
+        _url = AquaPicture.shuffled_list[0]
+        del AquaPicture.shuffled_list[0]
+        return _url
+    else:
+        _url = AquaPicture.shuffled_list[0]+_prefix
+        del AquaPicture.shuffled_list[0]
+        return _url
 
 
 @on_command('uploadByReply', patterns=rule_upload_by_reply, only_to_me=False)
@@ -183,24 +210,44 @@ async def aqua(session: CommandSession):
 
     await switch(str(result[1]), session)
 
+_event = ('poke', 'notice.notify.poke')
+
+
+@on_notice(_event)
+async def _(session: NoticeSession):
+    s = session.event
+    _url = await _get_aqua_pic()
+    if (s.group_id in Au.available_groups) and s.target_id == Au.bot_qq:
+        _msg = {
+            "type": "image",
+            "data": {
+                "file": _url
+            }
+        }
+        print(_msg)
+        await session.send(_msg)
+        #bot=get_bot()
+        #await bot.send_group_msg(group_id=s.group_id,message=_msg,self_id=Au.bot_qq)
+
+# poke  Notice: <Event, {'group_id': 259XXXX48, 'notice_type': 'notify', 'post_type': 'notice', 'self_id': XXXXXXXX, 'sender_id': XXXXXXXX, 'sub_type': 'poke', 'target_id': XXXXXXX, 'time': XXXXXXXXX, 'user_id': XXXXXXXX}>
+
+_get_id=r'\[CQ:reply,id=((\-|\+)?\d+?)]id'
+rule_get_id = re.compile(_get_id)
+@on_command(pattern=rule_get_id)
+async def get_id(session:CommandSession):
+
+    ...
 
 async def randomAqua(session: CommandSession) -> None:
     # aqua pic list
-    if not AquaPicture.shuffled_list or time.time()-44.5*60 > AquaPicture.last_shuffle_time:
-        AquaPicture.last_shuffle_time = time.time()
-        # shuffle aqua pic list
-        for obj in oss2.ObjectIteratorV2(Auth.bucket, prefix=Au.prefix):
-            AquaPicture.shuffled_list.append(Au.bucket_endpoint+str(obj.key))
-        del AquaPicture.shuffled_list[0]
-        # delete [0] because it`s path
-        random.shuffle(AquaPicture.shuffled_list)
+
+    _url = await _get_aqua_pic()
     _msg = {
         "type": "image",
         "data": {
-            "file": AquaPicture.shuffled_list[0]+"?x-oss-process=image/auto-orient,1/quality,q_100/format,jpg"
+            "file": _url
         }
     }
-    del AquaPicture.shuffled_list[0]
     await session.send(_msg)
 
 
@@ -235,10 +282,10 @@ async def _api():
     #AquaPicture.api = aapi.login(Au.pixiv_account, Au.pixiv_password)
 
 
-async def pixivAqua(session: Union[CommandSession,str]) ->None:
-    bot=get_bot()
+async def pixivAqua(session: Union[CommandSession, str]) -> None:
+    bot = get_bot()
     api = await _api()
-    session_type=type(session)
+    session_type = type(session)
     if type(api) == str:
         _msg = {
             "type": "text",
@@ -246,10 +293,10 @@ async def pixivAqua(session: Union[CommandSession,str]) ->None:
                 "text": api
             }
         }
-        if (session_type!=str):
+        if (session_type != str):
             return await session.send(_msg)
         else:
-            return await bot.send_private_msg(user_id=Au.superuser,message=_msg)
+            return await bot.send_private_msg(user_id=Au.superuser, message=_msg)
 
     # api=aapi
     '''
@@ -332,10 +379,10 @@ async def pixivAqua(session: Union[CommandSession,str]) ->None:
                 "file": _url
         }
     }
-    if session_type!=str:
+    if session_type != str:
         await session.send(_msg)
     else:
-        await bot.send_group_msg(group_id=Au.schedule_group,message=_msg)
+        await bot.send_group_msg(group_id=Au.schedule_group, message=_msg)
     '''    
     _msg = {
         "type": "text",
@@ -352,13 +399,14 @@ async def pixivAqua(session: Union[CommandSession,str]) ->None:
         }
     }
 
-    if session_type!=str:
+    if session_type != str:
         await session.send(_msg)
     else:
-        bot=get_bot()
-        await bot.send_group_msg(group_id=Au.schedule_group,message=_msg)
+        bot = get_bot()
+        await bot.send_group_msg(group_id=Au.schedule_group, message=_msg)
 
-@scheduler.scheduled_job('cron', hour='9',minute='53')
+
+@scheduler.scheduled_job('cron', hour='9', minute='53')
 async def _aquaDaily():
     return await pixivAqua(session="aqua pixiv day 1")
 
@@ -413,7 +461,6 @@ async def uploadAqua(session) -> None:
     msg_group = str(session.event.message).split(",")
     print(msg_group)
 
-
     # WOW, REGEX IS AWESOME!
     rule_upload_check = "/?aqua upload(\\n | \\n| | \\r\\n|\\r\\n |\\n)\[CQ:image"
     rule_upload_pixiv_check = "/?aqua upload (\d*)"
@@ -449,11 +496,11 @@ async def uploadAqua(session) -> None:
                 e = v['user_message']
                 _text = "fail to upload, error \"{}\" ".format(e)
                 _msg = {
-                        "type": "text",
-                        "data": {
+                    "type": "text",
+                    "data": {
                             "text": _text
-                        }
                     }
+                }
                 return await session.send(_msg)
 
         print(resp.illust)
@@ -499,27 +546,27 @@ async def searchAqua(session) -> None:
         # print(file_name)
         file_name = str(file_name['file'])
         localfile_path = localfile_path+file_name
-        saucenao_api=saucenao.Saucenao()
+        saucenao_api = saucenao.Saucenao()
         res = await saucenao_api.saucenao_search(localfile_path)
 
-        a=eval(res)
-        if(a['type']=='success'):
-            _rate=a['rate']
-            _index=a['index']
-            _text="similarity: %s\n"%_rate
-            for k,v in a['data'][_index].items():
-                _text+="%s: %s\n"%(k,v)
-            #print(_text)
-        elif(a['type']=='warn'):
-            _rate=a['rate']
-            _text="similarity: %s\n"%_rate
-            _text+=a['message']
-            #print(_text)
-        elif(a['type']=='error'):
-            _text="error\n"+a['message']
-            #print(_text)
+        a = eval(res)
+        if(a['type'] == 'success'):
+            _rate = a['rate']
+            _index = a['index']
+            _text = "similarity: %s\n" % _rate
+            for k, v in a['data'][_index].items():
+                _text += "%s: %s\n" % (k, v)
+            # print(_text)
+        elif(a['type'] == 'warn'):
+            _rate = a['rate']
+            _text = "similarity: %s\n" % _rate
+            _text += a['message']
+            # print(_text)
+        elif(a['type'] == 'error'):
+            _text = "error\n"+a['message']
+            # print(_text)
         else:
-            _text="Unknown Error Occurred."
+            _text = "Unknown Error Occurred."
         _msg = {
             "type": "text",
             "data": {
@@ -527,6 +574,8 @@ async def searchAqua(session) -> None:
             }
         }
         await session.send(_msg)
+
+
 async def helpAqua(session) -> None:
 
     _text_en = '''Aquaaaa Bot! \n\
