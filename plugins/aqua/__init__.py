@@ -1,3 +1,5 @@
+__version__='2.0.0'
+__date__='2021-05-29'
 from nonebot import on_command, CommandSession, get_bot, scheduler
 import random
 import re
@@ -53,13 +55,17 @@ class Auth:
 
 
 class AquaPicture:
-    last_login_time = 0
-    last_shuffle_time = 0
-    shuffled_list = []
-    api = None
+    last_login_time = 0  # 最后一次登陆的时间
+    last_shuffle_time = 0  # 最后一次打乱的时间
+    shuffled_list = []  # 经过打乱的夸图list
+    api = None  # pixiv的api
+    message_hashmap = {}  # 记录bot发送的message_id与对应的夸图id
 
 
 async def checkPermission(session: CommandSession):
+    '''
+    检测是否有足够的权限触发bot, 比如限定群组, 限定触发人员... 
+    '''
     # print(session.event.sub_type)
     # print(session.event.message_type)
     if session.event.message_type == 'group':
@@ -71,6 +77,10 @@ async def checkPermission(session: CommandSession):
 
 rule_upload_by_reply = re.compile(
     r"\[CQ:reply,id=((\-|\+)?\d+?)]\[CQ:at,qq=1649153753]")
+
+
+def _record_id(message_id: str, picture_id: str) -> None:
+    AquaPicture.message_hashmap[message_id] = picture_id
 
 
 async def _get_aqua_pic() -> str:
@@ -119,7 +129,7 @@ async def uploadByReply(session: CommandSession, id=None):
     random_name = picture_name[:6]
     picture_id = Au.prefix + '/'+random_name
     if Auth.bucket.object_exists(picture_id):
-        _text = 'fail to upload, picture already exists'
+        _text = 'fail \npicture already exists'
         _msg = {
             "type": "text",
             "data": {
@@ -141,10 +151,10 @@ async def uploadByReply(session: CommandSession, id=None):
         _msg = {
             "type": "text",
             "data": {
-                "text": "upload failed , error: {}".format(e)
+                "text": "fail \nerror: {}".format(e)
             }
         }
-    _text = "upload successfully! id:" + random_name
+    _text = "success\nid:" + random_name
     print("success!")
     _msg = {
         "type": "text",
@@ -156,8 +166,6 @@ async def uploadByReply(session: CommandSession, id=None):
 
 
 rule_upload_by_reply_v2 = re.compile(r"\[CQ:reply,id=((\-|\+)?\d+?)]传")
-
-
 @on_command('uploadByReply2', patterns=rule_upload_by_reply_v2, only_to_me=False)
 async def _up(session: CommandSession):
     res = re.match(rule_upload_by_reply_v2, str(session.event.message))
@@ -168,8 +176,10 @@ async def _up(session: CommandSession):
 @on_command("多来点夸图", only_to_me=False, aliases=("来多点夸图"))
 async def aquaModomodo(session: CommandSession):
     if await checkPermission(session):
-        for _ in range(1, random.randint(2, 4)):
-            await randomAqua(session)
+        _cnt = random.randint(2,4)
+
+
+
 
 
 @on_command("来点夸图", only_to_me=False, aliases=("来张夸图", "来点夸图", "夸图来"))
@@ -215,6 +225,9 @@ _event = ('poke', 'notice.notify.poke')
 
 @on_notice(_event)
 async def _(session: NoticeSession):
+    '''
+    戳一戳bot可直接发一张夸图, 等效randomAqua()
+    '''
     s = session.event
     _url = await _get_aqua_pic()
     if (s.group_id in Au.available_groups) and s.target_id == Au.bot_qq:
@@ -224,19 +237,24 @@ async def _(session: NoticeSession):
                 "file": _url
             }
         }
-        print(_msg)
+        print('戳一戳发夸图')
         await session.send(_msg)
-        #bot=get_bot()
-        #await bot.send_group_msg(group_id=s.group_id,message=_msg,self_id=Au.bot_qq)
+
+        # bot=get_bot()
+        # await bot.send_group_msg(group_id=s.group_id,message=_msg,self_id=Au.bot_qq)
 
 # poke  Notice: <Event, {'group_id': 259XXXX48, 'notice_type': 'notify', 'post_type': 'notice', 'self_id': XXXXXXXX, 'sender_id': XXXXXXXX, 'sub_type': 'poke', 'target_id': XXXXXXX, 'time': XXXXXXXXX, 'user_id': XXXXXXXX}>
 
-_get_id=r'\[CQ:reply,id=((\-|\+)?\d+?)]id'
+_get_id = r'\[CQ:reply,id=((\-|\+)?\d+?)]id'
 rule_get_id = re.compile(_get_id)
-@on_command(pattern=rule_get_id)
-async def get_id(session:CommandSession):
 
+
+@on_command(pattern=rule_get_id)
+async def get_id(session: CommandSession):
+    _msg= session.event.raw_message()
+    print(_msg)
     ...
+
 
 async def randomAqua(session: CommandSession) -> None:
     # aqua pic list
