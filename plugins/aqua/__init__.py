@@ -220,7 +220,8 @@ async def aqua(session: CommandSession):
             "stats": lambda: statsAqua(session),
             "pixiv": lambda: pixivAqua(session),
             "test": lambda: testAqua(session),
-            "search": lambda: searchAqua(session)
+            "search": lambda: searchAqua(session),
+            "show": lambda: showAqua(session)
         }
         return await optdict[option]()
 
@@ -551,6 +552,9 @@ async def uploadAqua(session) -> None:
             Auth.bucket.put_object_from_file(key=picture_id, filename=fullname)
             _text = 'uploaded \nid: '+'pixiv_'+_dict['id']
         # store a copy on your local computer as well
+        _id = 'pixiv_'+_dict['id']
+        await showAqua(session,_id)
+
 
     _msg = {
         "type": "text",
@@ -616,12 +620,12 @@ async def helpAqua(session) -> None:
     /aqua help :Did you mean '/aqua help' ? \n\
     /aqua pixiv ['day','week','month'] [1~10] :pixiv aqua session
     '''
-    _text_ch = '''Aquaaaa Bot! v2.1.0 2021-05-30\n\
+    _text_ch = '''Aquaaaa Bot! v2.1.1 2021-7-13\n\
     /aqua random: 随机一张夸图 \n\
         或大喊'来张夸图','来点夸图','夸图来' \n\
         或戳一戳bot来获得一张夸图 \n\
         回复bot'id'可获取此图的picture_id \n\
-    /aqua upload [夸图 | P站pid]: 上传一张夸图\n\
+    /aqua upload [夸图 | pid]: 上传一张夸图\n\
     /aqua delete [id]: 删除指定的图 \n\
     /aqua stats: 目前的夸图数量 \n\
     /aqua help: 您要找的是不是 '/aqua help' ? \n\
@@ -629,6 +633,7 @@ async def helpAqua(session) -> None:
         爬取指定时间段[日、周、月]中最受欢迎的第[几]张图 \n\
         回复bot一句"传"即可快速上传此张夸图 \n\
     /aqua search [图]: 在saucenao从中搜索这张图, 支持来源pixiv, twitter等\n\
+
     tips: 请注意空格
     '''
 
@@ -640,6 +645,20 @@ async def helpAqua(session) -> None:
     }
 
     await session.send(_msg)
+
+async def showAqua(session, id='') -> None:
+    _prefix = '?x-oss-process=image/auto-orient,1/quality,q_100/format,jpg'
+    _url=Auth.bucket_endpoint+Auth.prefix+ '/' +id+_prefix
+    _msg = {
+        "type": "image",
+        "data": {
+            "file": _url
+        }
+    }
+    print('showAqua: url: %s'%_url)
+    await session.send(_msg)
+    #AquaPicture.message_hashmap[str(m['message_id'])] = id
+
 
 
 async def statsAqua(session) -> None:
