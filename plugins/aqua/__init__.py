@@ -1,5 +1,6 @@
 from typing import Optional, Pattern, Union
 
+import asyncio
 from requests import sessions
 from .saucenao import Saucenao
 from aliyunsdkcore import client
@@ -15,8 +16,7 @@ from nonebot.notice_request import NoticeSession
 import re
 import random
 from nonebot import on_command, CommandSession, get_bot, scheduler
-__version__ = '2.0.0'
-__date__ = '2021-05-29'
+__version__ = '2.1.1'
 
 
 '''
@@ -553,6 +553,7 @@ async def uploadAqua(session) -> None:
             _text = 'uploaded \nid: '+'pixiv_'+_dict['id']
         # store a copy on your local computer as well
         _id = 'pixiv_'+_dict['id']
+        await asyncio.sleep(1)
         await showAqua(session,_id)
 
 
@@ -620,7 +621,7 @@ async def helpAqua(session) -> None:
     /aqua help :Did you mean '/aqua help' ? \n\
     /aqua pixiv ['day','week','month'] [1~10] :pixiv aqua session
     '''
-    _text_ch = '''Aquaaaa Bot! v2.1.1 2021-7-13\n\
+    _text_ch = '''Aquaaaa Bot! v2.1.2 2021-7-15\n\
     /aqua random: 随机一张夸图 \n\
         或大喊'来张夸图','来点夸图','夸图来' \n\
         或戳一戳bot来获得一张夸图 \n\
