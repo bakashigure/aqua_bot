@@ -16,7 +16,7 @@ from nonebot.notice_request import NoticeSession
 import re
 import random
 from nonebot import on_command, CommandSession, get_bot, scheduler
-__version__ = '2.1.1'
+__version__ = '2.1.3'
 
 
 '''
@@ -621,7 +621,7 @@ async def helpAqua(session) -> None:
     /aqua help :Did you mean '/aqua help' ? \n\
     /aqua pixiv ['day','week','month'] [1~10] :pixiv aqua session
     '''
-    _text_ch = '''Aquaaaa Bot! v2.1.2 2021-7-15\n\
+    _text_ch = '''Aquaaaa Bot! v2.1.3 2021-8-8\n\
     /aqua random: 随机一张夸图 \n\
         或大喊'来张夸图','来点夸图','夸图来' \n\
         或戳一戳bot来获得一张夸图 \n\
@@ -660,6 +660,7 @@ async def showAqua(session, id='') -> None:
     await session.send(_msg)
     #AquaPicture.message_hashmap[str(m['message_id'])] = id
 
+# hello_world
 
 
 async def statsAqua(session) -> None:

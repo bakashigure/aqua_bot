@@ -15,6 +15,7 @@ import re
 import sys
 import time
 import unicodedata
+import httpx
 from collections import OrderedDict
 import requests
 from PIL import Image
@@ -94,9 +95,9 @@ class Saucenao:
         imageData.close()
 
         processResults = True
-        while True:
             #proxy={"https":"http://127.0.0.1:7890"}
-            r = requests.post(url_all, files=files)
+        async with httpx.AsyncClient() as client:
+            r = await client.post(url=url_all, files=files,timeout=6)
             if r.status_code != 200:
                 if r.status_code == 403:
                     return json.dumps(
@@ -117,7 +118,7 @@ class Saucenao:
                         results['header']['short_remaining'])+'|'+str(results['header']['long_remaining']))
                     if int(results['header']['status']) == 0:
                         # search succeeded for all indexes, results usable
-                        break
+                        ...
                     else:
                         if int(results['header']['status']) > 0:
                             # One or more indexes are having an issue.
@@ -241,7 +242,7 @@ class Saucenao:
 
                 else:
                     return json.dumps(
-                        {'type': "warn","rate":"{0}%".format(str(results['results'][0]['header']['similarity'])) ,"message": "Not found ; _ ; please raise the minimum match threshold or choose another image"})
+                        {'type': "warn","rate":"{0}%".format(str(results['results'][0]['header']['similarity'])) ,"message": "not found...  ;_;"})
 
 
             else:
