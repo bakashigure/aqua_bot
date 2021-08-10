@@ -11,6 +11,8 @@ import codecs
 import io
 import json
 import os
+from PIL import ImageFile
+
 import re
 import sys
 import time
@@ -79,7 +81,7 @@ class Saucenao:
 
     async def saucenao_search(self, file_path: str):
         _msg = {}
-
+        ImageFile.LOAD_TRUNCATED_IMAGES = True
         image = Image.open(file_path)
         image = image.convert('RGB')
         image.thumbnail(self.thumbSize, resample=Image.ANTIALIAS)

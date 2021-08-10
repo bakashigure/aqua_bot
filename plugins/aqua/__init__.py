@@ -6,6 +6,7 @@ from .saucenao import Saucenao
 from aliyunsdkcore import client
 import oss2
 import time
+import os
 import operator
 import pixivpy3 as pixiv
 import string
@@ -16,7 +17,7 @@ from nonebot.notice_request import NoticeSession
 import re
 import random
 from nonebot import on_command, CommandSession, get_bot, scheduler
-__version__ = '2.1.3'
+__version__ = '2.1.4'
 
 
 '''
@@ -550,6 +551,7 @@ async def uploadAqua(session) -> None:
         else:
             urllib.request.urlretrieve(_dict['large_url'], fullname)
             Auth.bucket.put_object_from_file(key=picture_id, filename=fullname)
+            os.remove(fullname)
             _text = 'uploaded \nid: '+'pixiv_'+_dict['id']
         # store a copy on your local computer as well
         _id = 'pixiv_'+_dict['id']
@@ -621,7 +623,7 @@ async def helpAqua(session) -> None:
     /aqua help :Did you mean '/aqua help' ? \n\
     /aqua pixiv ['day','week','month'] [1~10] :pixiv aqua session
     '''
-    _text_ch = '''Aquaaaa Bot! v2.1.3 2021-8-8\n\
+    _text_ch = '''Aquaaaa Bot! v2.1.4 2021-8-10\n\
     /aqua random: 随机一张夸图 \n\
         或大喊'来张夸图','来点夸图','夸图来' \n\
         或戳一戳bot来获得一张夸图 \n\
